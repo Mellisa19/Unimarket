@@ -1,0 +1,182 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  studentId     String?   @unique
+  isVerified    Boolean   @default(false)
+  role          Role      @default(BUYER)
+  accounts      Account[]
+  sessions      Session[]
+  products      Product[]
+  orders        Order[]
+
+  // Chat relations
+  sentMessages     Message[]  @relation("SentMessages")
+  buyerChats       ChatRoom[] @relation("BuyerChats")
+  sellerChats      ChatRoom[] @relation("SellerChats")
+
+  // Verification & Review relations
+  verificationRequests VerificationRequest[]
+  givenReviews         Review[] @relation("GivenReviews")
+  receivedReviews      Review[] @relation("ReceivedReviews")
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+model VerificationRequest {
+  id           String             @id @default(cuid())
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolName   String
+  studentId    String
+  idImage      String             // Base64 or URL
+  status       VerificationStatus @default(PENDING)
+  adminNote    String?
+  
+  updatedAt    DateTime           @updatedAt
+  createdAt    DateTime           @default(now())
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  rating      Int      @default(5)
+  comment     String?
+  buyerId     String
+  buyer       User     @relation("GivenReviews", fields: [buyerId], references: [id])
+  sellerId    String
+  seller      User     @relation("ReceivedReviews", fields: [sellerId], references: [id])
+  productId   String?
+  
+  createdAt   DateTime @default(now())
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  price       Float
+  category    String
+  condition   String
+  images      String   // Stored as JSON string or comma-separated URLs
+  location    String?
+  sellerId    String
+  seller      User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  orders      Order[]
+  chats       ChatRoom[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  productId   String
+  product     Product     @relation(fields: [productId], references: [id])
+  buyerId     String
+  buyer       User        @relation(fields: [buyerId], references: [id])
+  status      OrderStatus @default(PENDING)
+  amount      Float
+  paymentRef  String?
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  AWAITING_MEETUP
+  COMPLETED
+  CANCELLED
+}
+
+model ChatRoom {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  buyerId     String
+  buyer       User      @relation("BuyerChats", fields: [buyerId], references: [id])
+  sellerId    String
+  seller      User      @relation("SellerChats", fields: [sellerId], references: [id])
+  messages    Message[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([productId, buyerId, sellerId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  chatId     String
+  chat       ChatRoom @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  senderId   String
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  content    String
+  isRead     Boolean  @default(false)
+  
+  createdAt  DateTime @default(now())
+}
