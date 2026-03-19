@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from './Button';
-import { Menu, X, ShoppingBag, MessageSquare } from 'lucide-react';
+import { Menu, X, ShoppingBag, MessageSquare, LayoutDashboard } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 
 export function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const { data: session } = useSession();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -56,25 +58,45 @@ export function Navbar() {
               "text-sm font-medium transition-colors hover:text-electricPurple",
               isScrolled ? "text-gray-200" : "text-gray-600"
             )}>Profile</Link>
-            <Link href="/messages" className={cn(
-              "relative text-sm font-medium transition-colors hover:text-electricPurple",
-              isScrolled ? "text-gray-200" : "text-gray-600"
-            )}>
-              Messages
-              <span className="absolute -top-1 -right-2 w-2 h-2 bg-electricPurple rounded-full animate-pulse"></span>
-            </Link>
+            
+            {session && (
+              <Link href="/messages" className={cn(
+                "relative text-sm font-medium transition-colors hover:text-electricPurple",
+                isScrolled ? "text-gray-200" : "text-gray-600"
+              )}>
+                Messages
+                <span className="absolute -top-1 -right-2 w-2 h-2 bg-electricPurple rounded-full animate-pulse"></span>
+              </Link>
+            )}
+
+            {(session?.user as any)?.role === 'ADMIN' && (
+              <Link href="/admin" className={cn(
+                "flex items-center gap-1.5 text-sm font-bold text-electricPurple transition-all hover:opacity-80",
+                isScrolled ? "" : ""
+              )}>
+                 <LayoutDashboard className="w-4 h-4" /> Admin Hub
+              </Link>
+            )}
           </nav>
 
           {/* Actions */}
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost" asChild className={cn(
-               isScrolled ? "text-white hover:text-electricPurple hover:bg-white/10" : "text-deepIndigo"
-            )}>
-              <Link href="/login">Log in</Link>
-            </Button>
-            <Button className="shadow-lg shadow-electricPurple/20" asChild>
-              <Link href="/signup">Sign up</Link>
-            </Button>
+            {!session ? (
+              <>
+                <Button variant="ghost" asChild className={cn(
+                   isScrolled ? "text-white hover:text-electricPurple hover:bg-white/10" : "text-deepIndigo"
+                )}>
+                  <Link href="/login">Log in</Link>
+                </Button>
+                <Button className="shadow-lg shadow-electricPurple/20" asChild>
+                  <Link href="/signup">Sign up</Link>
+                </Button>
+              </>
+            ) : (
+              <Button variant="ghost" className="text-gray-400 text-xs" onClick={() => window.location.href='/api/auth/signout'}>
+                Sign Out
+              </Button>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -95,15 +117,37 @@ export function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-xl px-4 py-6 flex flex-col gap-4 animate-in slide-in-from-top-2">
           <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-medium text-deepIndigo py-2 border-b border-gray-100">Marketplace</Link>
-          <Link href="/seller/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-medium text-deepIndigo py-2 border-b border-gray-100">Sell Items</Link>
-          <Link href="/messages" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-medium text-deepIndigo py-2 border-b border-gray-100 flex items-center justify-between">
-            Messages
-            <Badge variant="secondary" className="bg-electricPurple/10 text-electricPurple border-none">New</Badge>
-          </Link>
-          <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-medium text-deepIndigo py-2 border-b border-gray-100">About</Link>
+          <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-medium text-deepIndigo py-2 border-b border-gray-100">Sell Items</Link>
+          <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-medium text-deepIndigo py-2 border-b border-gray-100">Profile</Link>
+          
+          {session && (
+            <Link href="/messages" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-medium text-deepIndigo py-2 border-b border-gray-100 flex items-center justify-between">
+              Messages
+              <Badge variant="secondary" className="bg-electricPurple/10 text-electricPurple border-none">New</Badge>
+            </Link>
+          )}
+
+          {(session?.user as any)?.role === 'ADMIN' && (
+            <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-bold text-electricPurple py-2 border-b border-gray-100 flex items-center gap-2">
+              <LayoutDashboard className="w-5 h-5" /> Admin Hub
+            </Link>
+          )}
+
           <div className="flex flex-col gap-3 mt-4">
-            <Button variant="secondary" className="w-full justify-center">Log in</Button>
-            <Button className="w-full justify-center">Sign up</Button>
+            {!session ? (
+              <>
+                <Button variant="secondary" className="w-full justify-center" asChild>
+                  <Link href="/login">Log in</Link>
+                </Button>
+                <Button className="w-full justify-center" asChild>
+                  <Link href="/signup">Sign up</Link>
+                </Button>
+              </>
+            ) : (
+              <Button variant="ghost" className="w-full justify-center text-gray-400" onClick={() => window.location.href='/api/auth/signout'}>
+                Sign Out
+              </Button>
+            )}
           </div>
         </div>
       )}
